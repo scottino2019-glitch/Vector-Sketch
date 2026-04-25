@@ -14,26 +14,39 @@ async function startServer() {
 
   // Endpoint to get Firebase config (obfuscated from source code)
   app.get("/api/config", (req, res) => {
-    const getVal = (key: string) => process.env[key] || process.env[`VITE_${key}`];
+    const keys = [
+      "FIREBASE_PROJECT_ID",
+      "FIREBASE_APP_ID",
+      "FIREBASE_API_KEY",
+      "FIREBASE_AUTH_DOMAIN",
+      "FIREBASE_FIRESTORE_DATABASE_ID",
+      "FIREBASE_STORAGE_BUCKET",
+      "FIREBASE_MESSAGING_SENDER_ID"
+    ];
 
-    const config = {
-      projectId: getVal("FIREBASE_PROJECT_ID"),
-      appId: getVal("FIREBASE_APP_ID"),
-      apiKey: getVal("FIREBASE_API_KEY"),
-      authDomain: getVal("FIREBASE_AUTH_DOMAIN"),
-      firestoreDatabaseId: getVal("FIREBASE_FIRESTORE_DATABASE_ID"),
-      storageBucket: getVal("FIREBASE_STORAGE_BUCKET"),
-      messagingSenderId: getVal("FIREBASE_MESSAGING_SENDER_ID"),
+    const config: any = {};
+    keys.forEach(key => {
+      config[key.replace("FIREBASE_", "").toLowerCase().replace(/_([a-z])/g, (g) => g[1].toUpperCase())] = 
+        process.env[key] || process.env[`VITE_${key}`];
+    });
+
+    // Special mapping for field names if they don't match exactly
+    const mappedConfig = {
+      projectId: config.projectId || process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID,
+      appId: config.appId || process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID,
+      apiKey: config.apiKey || process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY,
+      authDomain: config.authDomain || process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN,
+      firestoreDatabaseId: config.firestoreDatabaseId || process.env.FIREBASE_FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
+      storageBucket: config.storageBucket || process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: config.messagingSenderId || process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     };
 
-    console.log("Firebase Config Request:", {
-      hasProjectId: !!config.projectId,
-      hasAppId: !!config.appId,
-      hasApiKey: !!config.apiKey,
+    console.log("Firebase Config Request Debug:", {
+      providedKeys: Object.keys(mappedConfig).filter(k => (mappedConfig as any)[k]),
       allEnvKeys: Object.keys(process.env).filter(k => k.includes("FIREBASE")),
     });
     
-    res.json(config);
+    res.json(mappedConfig);
   });
 
   // Vite middleware for development
