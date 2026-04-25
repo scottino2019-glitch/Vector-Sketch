@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming()) && incoming().email == request.auth.token.email;
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL']);
+
+      function isValidUserProfile(data) {
+        return data.email is string && data.email.size() <= 256
+          && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
+          && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512));
+      }
+    }
+
+    // --- Sketches ---
+    match /sketches/{sketchId} {
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && isValidId(sketchId) && (resource == null || resource.data.ownerId == request.auth.uid);
+      
+      allow create: if isSignedIn() 
+        && isValidId(sketchId)
+        && incoming().ownerId == request.auth.uid 
+        && isValidSketch(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() 
+        && existing().ownerId == request.auth.uid 
+        && incoming().ownerId == request.auth.uid
+        && isValidSketch(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      function isValidSketch(data) {
+        return data.keys().hasAll(['name', 'ownerId', 'canvasData', 'createdAt', 'updatedAt'])
+          && data.name is string && data.name.size() <= 256 && data.name.size() > 0
+          && data.ownerId == request.auth.uid
+          && data.canvasData is string && data.canvasData.size() <= 1000000 // Limit canvas JSON to ~1MB
+          && (data.createdAt is timestamp || data.createdAt == request.time)
+          && (data.updatedAt is timestamp || data.updatedAt == request.time);
+      }
+    }
+  }
+}
