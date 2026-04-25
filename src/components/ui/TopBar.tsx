@@ -72,17 +72,16 @@ export const TopBar: React.FC<TopBarProps> = ({ paperType, setPaperType, onExpor
            </div>
         </div>
         
-        {user && (
-          <button 
-            onClick={onSave}
-            className="glass-panel px-4 py-2 rounded-xl border border-[#2D2D2E] flex items-center gap-2 hover:bg-[#1F1F20] transition-all text-xs font-bold text-gray-300"
-          >
-            <Save size={14} className="text-[#C5A059]" />
-            <span>Salva nel Cloud</span>
-          </button>
-        )}
+        <button 
+          onClick={onSave}
+          className="glass-panel px-4 py-2 rounded-xl border border-[#2D2D2E] flex items-center gap-2 hover:bg-[#1F1F20] transition-all text-xs font-bold text-gray-300"
+        >
+          <Save size={14} className="text-[#C5A059]" />
+          <span>Salva Localmente</span>
+        </button>
 
         <div className="glass-panel px-1.5 py-1.5 rounded-xl border border-[#2D2D2E] hidden md:flex items-center gap-1">
+
           {[
             { id: 'plain', icon: Circle, label: 'Vuoto' },
             { id: 'grid', icon: Grid3X3, label: 'Griglia' },
@@ -208,46 +207,8 @@ export const TopBar: React.FC<TopBarProps> = ({ paperType, setPaperType, onExpor
             </div>
           )}
         </button>
-
-        <div className="w-px h-8 bg-[#2D2D2E] mx-1 hidden sm:block" />
-
-        {user ? (
-          <div className="flex items-center gap-2">
-            <div className="flex flex-col items-end hidden sm:flex">
-              <div className="text-[10px] font-bold leading-none text-[#E0E0E0]">{user.displayName || 'Sketcher'}</div>
-              <button 
-                onClick={logout}
-                className="text-[9px] text-[#C5A059] font-bold hover:underline"
-              >
-                LOGOUT
-              </button>
-            </div>
-            {user.photoURL ? (
-              <img src={user.photoURL} className="w-9 h-9 rounded-full border border-[#2D2D2E] shadow-sm" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-[#1F1F20] flex items-center justify-center border border-[#2D2D2E] shadow-sm">
-                <UserIcon size={16} className="text-gray-500" />
-              </div>
-            )}
-          </div>
-        ) : (
-          <button 
-            onClick={signIn}
-            disabled={loading}
-            className={cn(
-              "bg-[#C5A059] text-[#121212] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-[#B38E46] transition-all shadow-[0_4px_15px_rgba(197,160,89,0.2)]",
-              loading && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {loading ? (
-              <RotateCcw size={14} className="animate-spin" />
-            ) : (
-              <LogIn size={14} />
-            )}
-            <span>{loading ? 'Initializing...' : 'Sign In'}</span>
-          </button>
-        )}
       </div>
     </div>
   );
+
 };

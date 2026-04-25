@@ -29,12 +29,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       });
     }).catch(err => {
-      console.error("Firebase initialization failed:", err);
+      console.warn("Firebase not available, switching to Local Mode:", err);
+      // Create a persistent local identity
+      let localId = localStorage.getItem('local_user_id');
+      if (!localId) {
+        localId = `local-${Date.now()}`;
+        localStorage.setItem('local_user_id', localId);
+      }
+      
+      setUser({
+        uid: localId,
+        displayName: 'Guest User',
+        isAnonymous: true,
+      } as any);
       setLoading(false);
     });
 
     return () => unsubscribe && unsubscribe();
   }, []);
+
 
   const signIn = async () => {
     try {

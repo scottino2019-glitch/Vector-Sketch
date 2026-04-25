@@ -68,20 +68,11 @@ export async function initFirebase() {
     const config = await getFirebaseConfig();
     
     if (!config.apiKey || !config.projectId) {
-      const missing = [];
-      if (!config.apiKey) missing.push('FIREBASE_API_KEY');
-      if (!config.projectId) missing.push('FIREBASE_PROJECT_ID');
-      if (!config.appId) missing.push('FIREBASE_APP_ID');
-      
-      const errorMsg = `Firebase Configuration is incomplete. Missing: ${missing.join(', ')}. 
-      Current config: ${JSON.stringify({ ...config, apiKey: config.apiKey ? '***' : null }, null, 2)}
-      Please ensure these are set in Settings > Secrets.`;
-      
-      console.error(errorMsg);
-      throw new Error(errorMsg);
+      throw new Error('Config missing');
     }
 
     app = initializeApp(config);
+
     authInstance = getAuth(app);
     dbInstance = getFirestore(app, config.firestoreDatabaseId);
 

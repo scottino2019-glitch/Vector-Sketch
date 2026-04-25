@@ -97,6 +97,22 @@ export default function App() {
     setSavedProjects(projects || []);
   };
 
+  const handleDeleteProject = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Eliminare definitivamente questo schizzo?')) return;
+    try {
+      await SketchService.deleteSketch(id);
+      if (currentProjectId === id) {
+        setCurrentProjectId(null);
+        setProjectName('Untitled Sketch');
+        canvasRef.current?.resetCanvas();
+      }
+      refreshProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const loadProject = (project: any) => {
     if (!canvasRef.current) return;
     setProjectName(project.name);
@@ -105,22 +121,28 @@ export default function App() {
     setIsProjectMenuOpen(false);
   };
 
+  const formatDate = (date: any) => {
+    if (!date) return 'Recently Saved';
+    // Handle Firestore Timestamp
+    if (date.toDate) return date.toDate().toLocaleDateString();
+    // Handle local JS number/date
+    return new Date(date).toLocaleDateString();
+  };
+
   useEffect(() => {
-    if (user) refreshProjects();
+    refreshProjects();
   }, [user]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0A0A0A] text-gray-100 select-none">
       {/* Project Browser Button (Side) */}
-      {user && (
-        <button 
-          onClick={() => setIsProjectMenuOpen(true)}
-          className="fixed left-4 top-1/2 -translate-y-1/2 glass-panel p-3 rounded-full hover:bg-[#1F1F20] flex items-center justify-center z-40 shadow-xl border border-[#2D2D2E]"
-          title="Open Sketches"
-        >
-          <FolderOpen size={24} className="text-gray-400" />
-        </button>
-      )}
+      <button 
+        onClick={() => setIsProjectMenuOpen(true)}
+        className="fixed left-4 top-1/2 -translate-y-1/2 glass-panel p-3 rounded-full hover:bg-[#1F1F20] flex items-center justify-center z-40 shadow-xl border border-[#2D2D2E]"
+        title="Open Sketches"
+      >
+        <FolderOpen size={24} className="text-gray-400" />
+      </button>
 
       {/* Main Canvas Area */}
       <main className="flex-1 relative">
@@ -217,8 +239,8 @@ export default function App() {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-[#C5A059] flex items-center justify-center text-[#121212] font-serif font-black text-2xl italic shadow-[0_0_20px_rgba(197,160,89,0.3)]">V</div>
                     <div>
-                      <h2 className="text-xl font-serif font-black italic text-[#C5A059]">Cloud Library</h2>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Synchronized Workspace</p>
+                      <h2 className="text-xl font-serif font-black italic text-[#C5A059]">Local Library</h2>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Offline Storage</p>
                     </div>
                   </div>
                   <button 
@@ -233,25 +255,35 @@ export default function App() {
                   {savedProjects.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                       {savedProjects.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => loadProject(p)}
-                          className="group text-left space-y-3"
-                        >
-                          <div className="aspect-[4/3] bg-[#0A0A0A] rounded-2xl border border-[#2D2D2E] group-hover:border-[#C5A059] group-hover:shadow-lg transition-all flex items-center justify-center overflow-hidden relative">
-                             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#C5A059 1px, transparent 0)', backgroundSize: '15px 15px' }}></div>
-                             <div className="text-[10px] font-mono text-gray-700 group-hover:text-[#C5A059] transition-colors z-10 font-bold uppercase tracking-tighter">
-                                Vector Preview
-                             </div>
-                          </div>
-                          <div className="px-1">
-                            <div className="text-xs font-bold truncate text-gray-100 group-hover:text-[#C5A059] transition-colors">{p.name}</div>
-                            <div className="text-[9px] text-gray-500 font-mono font-bold uppercase tracking-tighter mt-1 flex items-center gap-1.5">
-                              <span className="w-1 h-1 rounded-full bg-green-500/50"></span>
-                              {p.updatedAt?.toDate().toLocaleDateString() || 'Recently Saved'}
+                        <div key={p.id} className="group relative space-y-3">
+                          <button
+                            onClick={() => loadProject(p)}
+                            className="w-full text-left"
+                          >
+                            <div className="aspect-[4/3] bg-[#0A0A0A] rounded-2xl border border-[#2D2D2E] group-hover:border-[#C5A059] group-hover:shadow-lg transition-all flex items-center justify-center overflow-hidden relative">
+                               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#C5A059 1px, transparent 0)', backgroundSize: '15px 15px' }}></div>
+                               <div className="text-[10px] font-mono text-gray-700 group-hover:text-[#C5A059] transition-colors z-10 font-bold uppercase tracking-tighter">
+                                  Vector Preview
+                               </div>
                             </div>
-                          </div>
-                        </button>
+                            <div className="px-1 mt-2">
+                              <div className="text-xs font-bold truncate text-gray-100 group-hover:text-[#C5A059] transition-colors">{p.name}</div>
+                              <div className="text-[9px] text-gray-500 font-mono font-bold uppercase tracking-tighter mt-1 flex items-center gap-1.5">
+                                <span className="w-1 h-1 rounded-full bg-green-500/50"></span>
+                                {formatDate(p.updatedAt)}
+                              </div>
+                            </div>
+                          </button>
+                          
+                          {/* Delete Button */}
+                          <button 
+                            onClick={(e) => handleDeleteProject(e, p.id)}
+                            className="absolute top-2 right-2 p-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20 backdrop-blur-md"
+                            title="Cancella Sketch"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -267,7 +299,7 @@ export default function App() {
                 </div>
 
                 <div className="p-6 border-t border-[#2D2D2E] bg-[#1F1F20]/50 flex justify-center">
-                   <p className="text-[9px] text-gray-600 font-bold uppercase tracking-[0.3em] font-mono">VectorSketch Pro v1.2 // Cloud Secure</p>
+                   <p className="text-[9px] text-gray-600 font-bold uppercase tracking-[0.3em] font-mono">VectorSketch Pro v1.2 // Local Storage</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -276,5 +308,6 @@ export default function App() {
       </main>
     </div>
   );
+
 }
 
