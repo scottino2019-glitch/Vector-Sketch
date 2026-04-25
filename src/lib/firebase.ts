@@ -13,34 +13,42 @@ let dbInstance: Firestore;
 const googleProvider = new GoogleAuthProvider();
 
 async function getFirebaseConfig() {
-  console.log("Fetching Firebase config...");
-  // Try to fetch from server first (full-stack mode)
-  try {
-    const response = await fetch('/api/config');
-    if (response.ok) {
-      const config = await response.json();
-      console.log("Server config check:", { hasApiKey: !!config.apiKey });
-      if (config.apiKey) return config;
-    } else {
-      console.warn("Server config fetch failed:", response.status);
-    }
-  } catch (e) {
-    console.error("Failed to fetch Firebase config from server", e);
+  console.log("Detecting Firebase configuration...");
+  
+  // 1. Try to get from Vite's built-in env (VITE_ prefixed)
+  const env = import.meta.env;
+  const config = {
+    apiKey: env.VITE_FIREBASE_API_KEY || (process.env as any).FIREBASE_API_KEY,
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || (process.env as any).FIREBASE_AUTH_DOMAIN,
+    projectId: env.VITE_FIREBASE_PROJECT_ID || (process.env as any).FIREBASE_PROJECT_ID,
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || (process.env as any).FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || (process.env as any).FIREBASE_MESSAGING_SENDER_ID,
+    appId: env.VITE_FIREBASE_APP_ID || (process.env as any).FIREBASE_APP_ID,
+    firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || (process.env as any).FIREBASE_FIRESTORE_DATABASE_ID,
+  };
+
+  if (config.apiKey && config.projectId) {
+    console.log("Firebase config found in client environment.");
+    return config;
   }
 
-  // Fallback to client-side env vars
-  const metaEnv = (import.meta as any).env || {};
-  const config = {
-    apiKey: (process.env as any).FIREBASE_API_KEY || metaEnv.VITE_FIREBASE_API_KEY,
-    authDomain: (process.env as any).FIREBASE_AUTH_DOMAIN || metaEnv.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: (process.env as any).FIREBASE_PROJECT_ID || metaEnv.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: (process.env as any).FIREBASE_STORAGE_BUCKET || metaEnv.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: (process.env as any).FIREBASE_MESSAGING_SENDER_ID || metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: (process.env as any).FIREBASE_APP_ID || metaEnv.VITE_FIREBASE_APP_ID,
-    firestoreDatabaseId: (process.env as any).FIREBASE_FIRESTORE_DATABASE_ID || metaEnv.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
-  };
-  
-  console.log("Fallback config check:", { hasApiKey: !!config.apiKey });
+  // 2. Try to fetch from server as fallback (full-stack mode)
+  try {
+    console.log("Client environment incomplete, attempting server fetch...");
+    const response = await fetch('/api/config');
+    if (response.ok) {
+      const serverConfig = await response.json();
+      if (serverConfig.apiKey && serverConfig.projectId) {
+        console.log("Firebase config received from server.");
+        return serverConfig;
+      }
+    }
+  } catch (e) {
+    console.warn("Server config fetch failed or unavailable.");
+  }
+
+  // 3. Last resort fallback (checking for potentially incorrectly populated process.env)
+  console.log("Searching all possible environment sources...");
   return config;
 }
 
